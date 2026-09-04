@@ -33,9 +33,11 @@ class InvalidStateTransitionError(StateMachineError):
         self.current_state = current_state
         self.target_state = target_state
         self.allowed_states = allowed_states
-        allowed_names = sorted([s.value for s in allowed_states]) if allowed_states else ["None (Terminal State)"]
+        allowed_names = sorted([s.value if hasattr(s, "value") else str(s) for s in allowed_states]) if allowed_states else ["None (Terminal State)"]
+        cur_name = current_state.value if hasattr(current_state, "value") else str(current_state)
+        tgt_name = target_state.value if hasattr(target_state, "value") else str(target_state)
         message = (
-            f"Invalid state transition from '{current_state.value}' to '{target_state.value}'. "
+            f"Invalid state transition from '{cur_name}' to '{tgt_name}'. "
             f"Allowed next states: {', '.join(allowed_names)}"
         )
         super().__init__(message)
@@ -45,7 +47,8 @@ class TerminalStateError(StateMachineError):
     """Raised when an operation attempts to transition out of a terminal state."""
     def __init__(self, current_state: CaseState):
         self.current_state = current_state
-        message = f"Cannot transition out of terminal state '{current_state.value}'."
+        cur_name = current_state.value if hasattr(current_state, "value") else str(current_state)
+        message = f"Cannot transition out of terminal state '{cur_name}'."
         super().__init__(message)
 
 
@@ -112,6 +115,7 @@ ALLOWED_TRANSITIONS: Dict[CaseState, Set[CaseState]] = {
     # 7. IFSC and Account format validated via deterministic schemas
     CaseState.DATA_VALIDATED: {
         CaseState.BANK_VALIDATED,        # Penny drop / bank verification service called
+        CaseState.HUMAN_REVIEW,          # Low name match score diverts to human review
         CaseState.VENDOR_CONTACTED,      # Validation failed -> ask vendor for corrections
         CaseState.ESCALATED,             # Bank validation service error
         CaseState.BLOCKED,               # Format violates core constraints
@@ -268,3 +272,8 @@ def transition(current_state: CaseState, target_state: CaseState) -> CaseState:
         )
 
     return target_state
+
+
+# Convenience alias
+transition_state = transition
+

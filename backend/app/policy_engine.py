@@ -78,6 +78,8 @@ ACTION_REGISTRY: Dict[str, PolicyLevel] = {
     "get_vendor_bank_details": PolicyLevel.AUTONOMOUS,
     "classify_failure": PolicyLevel.AUTONOMOUS,
     "send_vendor_message": PolicyLevel.AUTONOMOUS,
+    "read_vendor_response": PolicyLevel.AUTONOMOUS,
+    "request_missing_information": PolicyLevel.AUTONOMOUS,
     "create_recovery_case": PolicyLevel.AUTONOMOUS,
     "parse_vendor_response": PolicyLevel.AUTONOMOUS,
     "query_status": PolicyLevel.AUTONOMOUS,
@@ -91,6 +93,8 @@ ACTION_REGISTRY: Dict[str, PolicyLevel] = {
     "update_invoice_status": PolicyLevel.CONTROLLED_MUTATION,
     "initiate_account_validation": PolicyLevel.CONTROLLED_MUTATION,
     "validate_fund_account": PolicyLevel.CONTROLLED_MUTATION,
+    "prepare_replacement_payout": PolicyLevel.CONTROLLED_MUTATION,
+    "request_human_approval": PolicyLevel.CONTROLLED_MUTATION,
     "update_case_state": PolicyLevel.CONTROLLED_MUTATION,
     "schedule_retry": PolicyLevel.CONTROLLED_MUTATION,
 

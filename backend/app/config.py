@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     ZOHO_ACCOUNTS_URL: str = "https://accounts.zoho.in/oauth/v2/token"
 
     # ── LLM ───────────────────────────────────────────────────────────────────
+    LLM_PROVIDER: str = "gemini"  # "gemini", "openai", or "mock"
+    GEMINI_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
 
     # ── Policy thresholds ────────────────────────────────────────────────────

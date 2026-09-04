@@ -71,6 +71,16 @@ class Approval(Base):
         "RecoveryCaseModel", back_populates="approvals"
     )
 
+    @property
+    def action(self) -> str:
+        """Alias returning action_description."""
+        return self.action_description
+
+    @property
+    def status(self) -> str:
+        """Returns PENDING if decision is None, else the decision string."""
+        return "PENDING" if self.decision is None else self.decision
+
     def __repr__(self) -> str:
         return (
             f"<Approval case={self.case_id} "
