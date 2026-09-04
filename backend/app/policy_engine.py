@@ -90,6 +90,7 @@ ACTION_REGISTRY: Dict[str, PolicyLevel] = {
     "update_vendor_bank_details": PolicyLevel.CONTROLLED_MUTATION,
     "update_invoice_status": PolicyLevel.CONTROLLED_MUTATION,
     "initiate_account_validation": PolicyLevel.CONTROLLED_MUTATION,
+    "validate_fund_account": PolicyLevel.CONTROLLED_MUTATION,
     "update_case_state": PolicyLevel.CONTROLLED_MUTATION,
     "schedule_retry": PolicyLevel.CONTROLLED_MUTATION,
 
