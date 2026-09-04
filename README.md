@@ -16,6 +16,7 @@ For the full architecture and implementation plan, see:
 - [documentation/phase_1.md](./documentation/phase_1.md) — Phase 1 architecture, challenges, and resolutions
 - [documentation/phase_2.md](./documentation/phase_2.md) — Phase 2 state machine specification and test suite
 - [documentation/phase_3.md](./documentation/phase_3.md) — Phase 3 deterministic failure classifier and test suite
+- [documentation/phase_4.md](./documentation/phase_4.md) — Phase 4 policy and authority engine specification and tests
 
 ---
 
@@ -26,7 +27,7 @@ For the full architecture and implementation plan, see:
 | 1     | Project scaffold and database models    | Complete    |
 | 2     | State machine                           | Complete    |
 | 3     | Failure classifier                      | Complete    |
-| 4     | Policy engine                           | Not started |
+| 4     | Policy engine                           | Complete    |
 | 5     | Cryptographic audit ledger              | Not started |
 | 6     | Razorpay integration (Test Mode)        | Not started |
 | 7     | Zoho Books integration (Sandbox)        | Not started |
@@ -133,6 +134,7 @@ Interactive API docs: http://localhost:8000/docs
     │   │   ├── enums.py             All application enums
     │   │   ├── state_machine.py     Pure Python state machine and transition table
     │   │   ├── classifier.py        Deterministic failure classification engine
+    │   │   ├── policy_engine.py     Deterministic policy and authority engine
     │   │   ├── models/              SQLAlchemy table definitions
     │   │   │   ├── vendor.py
     │   │   │   ├── payout.py
@@ -147,7 +149,8 @@ Interactive API docs: http://localhost:8000/docs
     │   ├── tests/                   Unit and integration test suite
     │   │   ├── __init__.py
     │   │   ├── test_state_machine.py
-    │   │   └── test_classifier.py
+    │   │   ├── test_classifier.py
+    │   │   └── test_policy_engine.py
     │   ├── alembic/                 Database migration system
     │   │   ├── env.py
     │   │   ├── script.py.mako
@@ -158,7 +161,8 @@ Interactive API docs: http://localhost:8000/docs
     ├── documentation/
     │   ├── phase_1.md               Phase 1 overview, challenges, and solutions
     │   ├── phase_2.md               Phase 2 state machine specification and tests
-    │   └── phase_3.md               Phase 3 failure classification engine and tests
+    │   ├── phase_3.md               Phase 3 failure classification engine and tests
+    │   └── phase_4.md               Phase 4 policy and authority engine and tests
     ├── antigrav_plan.md             Full system architecture
     ├── implementation_plan.md       Phase-by-phase build plan
     ├── must_follow.md               Engineering rules for this project
@@ -169,4 +173,4 @@ Interactive API docs: http://localhost:8000/docs
 
 ## Next Phase
 
-Phase 4: Policy Engine — deterministic authority/policy engine evaluating action risk levels and approvals.
+Phase 5: Cryptographic Audit Ledger — SHA-256 tamper-evident hash chaining and verification across all case events.
