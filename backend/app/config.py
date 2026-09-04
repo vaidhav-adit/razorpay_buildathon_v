@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     ZOHO_CLIENT_SECRET: str = ""
     ZOHO_REDIRECT_URI: str = ""
     ZOHO_ORGANIZATION_ID: str = ""
+    ZOHO_REFRESH_TOKEN: str = ""
+    ZOHO_BASE_URL: str = "https://books.zoho.in/api/v3"
+    ZOHO_ACCOUNTS_URL: str = "https://accounts.zoho.in/oauth/v2/token"
 
     # ── LLM ───────────────────────────────────────────────────────────────────
     OPENAI_API_KEY: str = ""
