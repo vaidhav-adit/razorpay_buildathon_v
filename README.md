@@ -18,6 +18,7 @@ For the full architecture and implementation plan, see:
 - [documentation/phase_3.md](./documentation/phase_3.md) — Phase 3 deterministic failure classifier and test suite
 - [documentation/phase_4.md](./documentation/phase_4.md) — Phase 4 policy and authority engine specification and tests
 - [documentation/phase_5.md](./documentation/phase_5.md) — Phase 5 cryptographic audit ledger and chain verification
+- [documentation/phase_6.md](./documentation/phase_6.md) — Phase 6 RazorpayX client tools and webhook ingestion
 
 ---
 
@@ -30,7 +31,7 @@ For the full architecture and implementation plan, see:
 | 3     | Failure classifier                      | Complete    |
 | 4     | Policy engine                           | Complete    |
 | 5     | Cryptographic audit ledger              | Complete    |
-| 6     | Razorpay integration (Test Mode)        | Not started |
+| 6     | Razorpay integration (Test Mode)        | Complete    |
 | 7     | Zoho Books integration (Sandbox)        | Not started |
 | 8     | Mock account validation service         | Not started |
 | 9     | Vendor communication adapter            | Not started |
@@ -137,6 +138,9 @@ Interactive API docs: http://localhost:8000/docs
     │   │   ├── classifier.py        Deterministic failure classification engine
     │   │   ├── policy_engine.py     Deterministic policy and authority engine
     │   │   ├── audit.py             Cryptographic SHA-256 audit ledger service
+    │   │   ├── services/            External service client integrations
+    │   │   │   ├── __init__.py
+    │   │   │   └── razorpay_client.py
     │   │   ├── models/              SQLAlchemy table definitions
     │   │   │   ├── vendor.py
     │   │   │   ├── payout.py
@@ -148,13 +152,15 @@ Interactive API docs: http://localhost:8000/docs
     │   │   │   └── audit_event.py
     │   │   └── api/
     │   │       ├── health.py        GET /health endpoint
-    │   │       └── audit.py         GET /cases/{id}/audit endpoint
+    │   │       ├── audit.py         GET /cases/{id}/audit endpoint
+    │   │       └── webhooks.py      POST /webhooks/razorpay endpoint
     │   ├── tests/                   Unit and integration test suite
     │   │   ├── __init__.py
     │   │   ├── test_state_machine.py
     │   │   ├── test_classifier.py
     │   │   ├── test_policy_engine.py
-    │   │   └── test_audit.py
+    │   │   ├── test_audit.py
+    │   │   └── test_razorpay.py
     │   ├── alembic/                 Database migration system
     │   │   ├── env.py
     │   │   ├── script.py.mako
@@ -167,7 +173,8 @@ Interactive API docs: http://localhost:8000/docs
     │   ├── phase_2.md               Phase 2 state machine specification and tests
     │   ├── phase_3.md               Phase 3 failure classification engine and tests
     │   ├── phase_4.md               Phase 4 policy and authority engine and tests
-    │   └── phase_5.md               Phase 5 cryptographic audit ledger and tests
+    │   ├── phase_5.md               Phase 5 cryptographic audit ledger and tests
+    │   └── phase_6.md               Phase 6 RazorpayX client tools and webhooks
     ├── antigrav_plan.md             Full system architecture
     ├── implementation_plan.md       Phase-by-phase build plan
     ├── must_follow.md               Engineering rules for this project
@@ -178,4 +185,4 @@ Interactive API docs: http://localhost:8000/docs
 
 ## Next Phase
 
-Phase 6: Razorpay Integration (Test Mode) — real API client for Razorpay contacts, fund accounts, and payouts with policy checks and audit logging.
+Phase 7: Zoho Books Integration (Sandbox) — OAuth 2.0 token manager, vendor synchronization, and invoice matching.
