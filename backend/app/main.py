@@ -16,9 +16,24 @@ Interactive API docs are available at:
     http://localhost:8000/redoc  (ReDoc)
 """
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.health import router as health_router
+from app.api.audit import router as audit_router
+
+
+# ── Lifecycle manager ─────────────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Manages application startup and shutdown lifecycle.
+    Database connections are managed per-request via the get_db() dependency.
+    """
+    print("RazorpayX Exception Resolution Agent starting up...")
+    yield
+    print("RazorpayX Exception Resolution Agent shutting down.")
+
 
 # ── App instance ──────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -28,14 +43,15 @@ app = FastAPI(
         "The agent investigates failures, communicates with vendors, validates corrected "
         "banking details, and prepares replacement payouts for human authorization."
     ),
-    version="0.1.0",  # Incremented with each phase
+    version="0.5.0",  # Updated for Phase 5
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-# Phase 1: health check only. More routers are registered in later phases.
 app.include_router(health_router)
+app.include_router(audit_router)
 
 # Future routers (added as phases complete):
 # app.include_router(webhook_router, prefix="/webhooks")
@@ -43,20 +59,3 @@ app.include_router(health_router)
 # app.include_router(vendor_router, prefix="/vendor")
 # app.include_router(agent_router, prefix="/agent")
 # app.include_router(test_router, prefix="/test")
-
-
-# ── Lifecycle events ──────────────────────────────────────────────────────────
-@app.on_event("startup")
-async def on_startup():
-    """
-    Runs once when the server starts.
-    Currently just logs a startup message. Database connections are managed
-    per-request via the get_db() dependency — no pool warm-up needed.
-    """
-    print("RazorpayX Exception Resolution Agent starting up...")
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    """Runs once when the server is shutting down."""
-    print("RazorpayX Exception Resolution Agent shutting down.")

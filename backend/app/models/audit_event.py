@@ -26,7 +26,8 @@ audit table lean while still being verifiable.
 """
 
 import uuid
-from datetime import datetime
+import time
+from datetime import datetime, timezone
 
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,12 +35,18 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
+def generate_audit_id() -> str:
+    """Generate a monotonically sortable unique ID for audit ledger events."""
+    now_ns = time.time_ns()
+    return f"{now_ns:020d}_{uuid.uuid4().hex[:8]}"
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 
     # ── Primary key ───────────────────────────────────────────────────────────
     id: Mapped[str] = mapped_column(
-        String, primary_key=True, default=lambda: str(uuid.uuid4())
+        String, primary_key=True, default=generate_audit_id
     )
 
     # ── Foreign key ───────────────────────────────────────────────────────────
