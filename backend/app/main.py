@@ -23,6 +23,7 @@ from app.api.health import router as health_router
 from app.api.audit import router as audit_router
 from app.api.webhooks import router as webhook_router
 from app.api.zoho_webhooks import router as zoho_webhook_router
+from app.api.vendor_communication import router as vendor_router
 
 
 # ── Lifecycle manager ─────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ app = FastAPI(
         "The agent investigates failures, communicates with vendors, validates corrected "
         "banking details, and prepares replacement payouts for human authorization."
     ),
-    version="0.7.0",  # Updated for Phase 7
+    version="0.9.0",  # Updated for Phase 9
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -56,6 +57,7 @@ app.include_router(health_router)
 app.include_router(audit_router)
 app.include_router(webhook_router)
 app.include_router(zoho_webhook_router)
+app.include_router(vendor_router)
 
 # Future routers (added as phases complete):
 # app.include_router(webhook_router, prefix="/webhooks")
