@@ -15,6 +15,7 @@ For the full architecture and implementation plan, see:
 - [implementation_plan.md](./implementation_plan.md) — phase-by-phase build plan
 - [documentation/phase_1.md](./documentation/phase_1.md) — Phase 1 architecture, challenges, and resolutions
 - [documentation/phase_2.md](./documentation/phase_2.md) — Phase 2 state machine specification and test suite
+- [documentation/phase_3.md](./documentation/phase_3.md) — Phase 3 deterministic failure classifier and test suite
 
 ---
 
@@ -24,7 +25,7 @@ For the full architecture and implementation plan, see:
 |-------|-----------------------------------------|-------------|
 | 1     | Project scaffold and database models    | Complete    |
 | 2     | State machine                           | Complete    |
-| 3     | Failure classifier                      | Not started |
+| 3     | Failure classifier                      | Complete    |
 | 4     | Policy engine                           | Not started |
 | 5     | Cryptographic audit ledger              | Not started |
 | 6     | Razorpay integration (Test Mode)        | Not started |
@@ -131,6 +132,7 @@ Interactive API docs: http://localhost:8000/docs
     │   │   ├── database.py          SQLAlchemy engine and session
     │   │   ├── enums.py             All application enums
     │   │   ├── state_machine.py     Pure Python state machine and transition table
+    │   │   ├── classifier.py        Deterministic failure classification engine
     │   │   ├── models/              SQLAlchemy table definitions
     │   │   │   ├── vendor.py
     │   │   │   ├── payout.py
@@ -144,7 +146,8 @@ Interactive API docs: http://localhost:8000/docs
     │   │       └── health.py        GET /health endpoint
     │   ├── tests/                   Unit and integration test suite
     │   │   ├── __init__.py
-    │   │   └── test_state_machine.py
+    │   │   ├── test_state_machine.py
+    │   │   └── test_classifier.py
     │   ├── alembic/                 Database migration system
     │   │   ├── env.py
     │   │   ├── script.py.mako
@@ -154,7 +157,8 @@ Interactive API docs: http://localhost:8000/docs
     │   └── .env.example
     ├── documentation/
     │   ├── phase_1.md               Phase 1 overview, challenges, and solutions
-    │   └── phase_2.md               Phase 2 state machine specification and tests
+    │   ├── phase_2.md               Phase 2 state machine specification and tests
+    │   └── phase_3.md               Phase 3 failure classification engine and tests
     ├── antigrav_plan.md             Full system architecture
     ├── implementation_plan.md       Phase-by-phase build plan
     ├── must_follow.md               Engineering rules for this project
@@ -165,4 +169,4 @@ Interactive API docs: http://localhost:8000/docs
 
 ## Next Phase
 
-Phase 3: Failure Classifier — deterministic mapping of Razorpay failure codes to recovery strategies with unit test suite.
+Phase 4: Policy Engine — deterministic authority/policy engine evaluating action risk levels and approvals.
