@@ -24,6 +24,7 @@ For the full architecture and implementation plan, see:
 - [documentation/phase_9.md](./documentation/phase_9.md) — Phase 9 Vendor Communication Adapter
 - [documentation/phase_10.md](./documentation/phase_10.md) — Phase 10 LLM Agent & State Machine Orchestration
 - [documentation/phase_11.md](./documentation/phase_11.md) — Phase 11 Human Approval API and Reconciliation
+- [documentation/phase_12.md](./documentation/phase_12.md) — Phase 12 Test Case Engine and Evaluation Harness
 
 ---
 
@@ -42,7 +43,7 @@ For the full architecture and implementation plan, see:
 | 9     | Vendor communication adapter            | Complete    |
 | 10    | LLM agent with LangGraph                | Complete    |
 | 11    | Human approval API                      | Complete    |
-| 12    | Test case engine and evaluation harness | Not started |
+| 12    | Test case engine and evaluation harness | Complete    |
 | 13    | Frontend dashboard (Next.js)            | Not started |
 | 14    | Demo polish and adversarial testing     | Not started |
 

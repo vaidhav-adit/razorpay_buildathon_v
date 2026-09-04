@@ -13,7 +13,7 @@ This module coordinates the end-to-end exception resolution lifecycle:
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
-from app.enums import CaseState, AuditActorType
+from app.enums import CaseState, AuditActorType, RecoveryStrategy
 from app.models.recovery_case import RecoveryCaseModel
 from app.models.payout import Payout
 from app.state_machine import transition_state, is_terminal_state
@@ -81,9 +81,15 @@ class AgentOrchestrator:
                 continue
 
             elif current_state == CaseState.RECOVERY_STRATEGY_SELECTED:
-                node_out = run_vendor_contact_node(case, db)
-                self._apply_transition(case, node_out.next_state, node_out.transition_reason, db)
-                continue
+                strat_val = case.recovery_strategy.value if hasattr(case.recovery_strategy, "value") else str(case.recovery_strategy)
+                if strat_val in {RecoveryStrategy.VENDOR_REMEDIATION.value, "VENDOR_REMEDIATION"}:
+                    node_out = run_vendor_contact_node(case, db)
+                    self._apply_transition(case, node_out.next_state, node_out.transition_reason, db)
+                    continue
+                else:
+                    # Non-vendor strategy (e.g. SCHEDULE_RETRY, FINANCE_ESCALATION, BLOCK)
+                    # Safe halt: zero vendor outreach
+                    break
 
             # ── Node 3: VENDOR_CONTACTED ─────────────────────────────────────
             elif current_state == CaseState.VENDOR_CONTACTED:
