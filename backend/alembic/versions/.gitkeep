@@ -1,0 +1,5 @@
+# This directory holds Alembic-generated migration files.
+# Each file represents one schema change and is applied in order.
+# Files are auto-generated with: alembic revision --autogenerate -m "description"
+# Applied with: alembic upgrade head
+# Rolled back with: alembic downgrade -1
