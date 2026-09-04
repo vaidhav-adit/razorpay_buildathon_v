@@ -23,6 +23,7 @@ For the full architecture and implementation plan, see:
 - [documentation/phase_8.md](./documentation/phase_8.md) — Phase 8 Mock Account Validation Service
 - [documentation/phase_9.md](./documentation/phase_9.md) — Phase 9 Vendor Communication Adapter
 - [documentation/phase_10.md](./documentation/phase_10.md) — Phase 10 LLM Agent & State Machine Orchestration
+- [documentation/phase_11.md](./documentation/phase_11.md) — Phase 11 Human Approval API and Reconciliation
 
 ---
 
@@ -40,7 +41,7 @@ For the full architecture and implementation plan, see:
 | 8     | Mock account validation service         | Complete    |
 | 9     | Vendor communication adapter            | Complete    |
 | 10    | LLM agent with LangGraph                | Complete    |
-| 11    | Human approval API                      | Not started |
+| 11    | Human approval API                      | Complete    |
 | 12    | Test case engine and evaluation harness | Not started |
 | 13    | Frontend dashboard (Next.js)            | Not started |
 | 14    | Demo polish and adversarial testing     | Not started |

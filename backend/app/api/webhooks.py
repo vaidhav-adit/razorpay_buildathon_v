@@ -29,6 +29,7 @@ from app.models.payout import Payout
 from app.models.recovery_case import RecoveryCaseModel
 from app.classifier import classify_failure
 from app.audit import log_audit_event
+from app.state_machine import transition_state
 from app.services.razorpay_client import verify_razorpay_signature
 
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
@@ -77,7 +78,73 @@ async def receive_razorpay_webhook(
 
     event_name = payload.get("event", "unknown")
 
-    # 2. Filter for failure/exception events
+    # 2. Handle successful payout reconciliation
+    if event_name == "payout.processed":
+        payout_data = payload.get("payload", {}).get("payout", {}).get("entity", {})
+        rzp_payout_id = payout_data.get("id")
+
+        payout = db.query(Payout).filter(Payout.razorpay_payout_id == rzp_payout_id).first() if rzp_payout_id else None
+        if payout:
+            payout.status = "processed"
+            db.commit()
+
+        case = None
+        if payout:
+            case = db.query(RecoveryCaseModel).filter(RecoveryCaseModel.payout_id == payout.id).first()
+        if not case and payout_data.get("reference_id"):
+            case = db.query(RecoveryCaseModel).filter(RecoveryCaseModel.invoice_reference == payout_data.get("reference_id")).first()
+
+        if case and case.state in {CaseState.PAYOUT_EXECUTED, CaseState.PAYOUT_EXECUTED.value}:
+            if case.invoice_reference:
+                try:
+                    from app.services.zoho_client import zoho_client
+                    zoho_client.update_invoice_status(
+                        invoice_id=case.invoice_reference,
+                        status="paid",
+                        case_id=case.id,
+                        db=db,
+                    )
+                except Exception:
+                    pass
+
+            # Sequential transitions: PAYOUT_EXECUTED -> PAYOUT_CONFIRMED -> CASE_RESOLVED
+            st1 = transition_state(case.state, CaseState.PAYOUT_CONFIRMED)
+            case.state = st1
+            db.commit()
+
+            st2 = transition_state(case.state, CaseState.CASE_RESOLVED)
+            case.state = st2
+            case.resolved_at = datetime.now()
+            db.commit()
+            db.refresh(case)
+
+            log_audit_event(
+                db=db,
+                case_id=case.id,
+                event_type=AuditActorType.EXTERNAL_FACT,
+                actor="razorpay_webhook",
+                action="PAYOUT_PROCESSED_CONFIRMED",
+                target=rzp_payout_id or case.id,
+                reason="Subsequent replacement payout confirmed by RazorpayX. Case fully resolved and ERP reconciled.",
+                input_data=payload,
+                output_data={"case_number": case.case_number, "final_state": CaseState.CASE_RESOLVED.value},
+            )
+
+            return WebhookIngestResponse(
+                status="reconciled",
+                case_id=case.id,
+                case_number=case.case_number,
+                event=event_name,
+            )
+
+        return WebhookIngestResponse(
+            status="ignored",
+            case_id=case.id if case else None,
+            case_number=case.case_number if case else None,
+            event=event_name,
+        )
+
+    # 3. Filter for failure/exception events
     if event_name not in {"payout.failed", "payout.reversed"}:
         return WebhookIngestResponse(
             status="ignored",

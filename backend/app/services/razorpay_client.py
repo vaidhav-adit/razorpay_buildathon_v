@@ -402,6 +402,7 @@ class RazorpayClient:
         db: Optional[Session] = None,
         context: Optional[PolicyContext] = None,
         is_human_authorized: bool = False,
+        approved_by: Optional[str] = None,
     ) -> RazorpayPayoutResponse:
         """
         Initiates a replacement payout on RazorpayX (POST /v1/payouts).
@@ -451,7 +452,7 @@ class RazorpayClient:
                 db=db,
                 case_id=case_id,
                 event_type=AuditActorType.HUMAN_DECISION,
-                actor="human_authorized_agent",
+                actor=approved_by or "human_authorized_agent",
                 action="CREATE_PAYOUT",
                 target=result.id,
                 input_data=payload,
