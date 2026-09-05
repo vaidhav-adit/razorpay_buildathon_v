@@ -97,6 +97,17 @@ class AgentOrchestrator:
                     if single_step:
                         break
                     continue
+                elif strat_val in {RecoveryStrategy.INTERNAL_WORKFLOW.value, "INTERNAL_WORKFLOW"}:
+                    # Rail switch / internal repair without disturbing vendor!
+                    self._apply_transition(
+                        case,
+                        CaseState.POLICY_CHECK,
+                        f"Autonomous Payment Rail Switch: Switched mode to NEFT/RTGS to resolve '{case.failure_reason}' without disturbing vendor.",
+                        db,
+                    )
+                    if single_step:
+                        break
+                    continue
                 elif strat_val in {RecoveryStrategy.BLOCK.value, "BLOCK"} or case.failure_reason == "bank_account_frozen":
                     self._apply_transition(case, CaseState.BLOCKED, "Fatal compliance/fraud risk. Autonomous recovery aborted.", db)
                     break
