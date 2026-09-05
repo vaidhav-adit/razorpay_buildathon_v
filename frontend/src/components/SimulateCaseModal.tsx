@@ -11,6 +11,9 @@ import {
   Building2,
   Eye,
   Zap,
+  Dices,
+  RefreshCw,
+  ShieldAlert,
 } from "lucide-react";
 
 interface SimulateCaseModalProps {
@@ -43,6 +46,17 @@ const PRESET_SIMULATIONS = [
     invoice_reference: "INV-2026-9901",
   },
   {
+    title: "Merged Bank Branch (Syndicate -> Canara)",
+    category: "Bank Merger",
+    vendor_name: "Karnataka Heavy Agro Supplies",
+    contact_id: "",
+    zoho_vendor_id: "",
+    amount: 38000000, // INR 3,80,000
+    failure_source: "beneficiary_bank",
+    failure_reason: "defunct_merged_branch_ifsc",
+    invoice_reference: "INV-2026-8810",
+  },
+  {
     title: "Golden Path: Invalid IFSC Code",
     category: "Remediation",
     vendor_name: "Apex Logistics India Pvt Ltd",
@@ -65,6 +79,28 @@ const PRESET_SIMULATIONS = [
     invoice_reference: "INV-2026-8803",
   },
   {
+    title: "Vendor KYC Document Expiry",
+    category: "Compliance",
+    vendor_name: "Mahindra Precision Tooling Ltd",
+    contact_id: "",
+    zoho_vendor_id: "",
+    amount: 62000000, // INR 6,20,000
+    failure_source: "beneficiary_bank",
+    failure_reason: "vendor_kyc_update_required",
+    invoice_reference: "INV-2026-8812",
+  },
+  {
+    title: "High-Value RTGS Switch Routing (> ₹50L)",
+    category: "Treasury",
+    vendor_name: "Tata Infrastructure Projects",
+    contact_id: "",
+    zoho_vendor_id: "",
+    amount: 550000000, // INR 55,00,000
+    failure_source: "gateway",
+    failure_reason: "invalid_beneficiary_details",
+    invoice_reference: "INV-2026-8814",
+  },
+  {
     title: "Beneficiary Bank Offline (Retry Strategy)",
     category: "Autonomous Retry",
     vendor_name: "Deccan Steel Corporation",
@@ -74,6 +110,17 @@ const PRESET_SIMULATIONS = [
     failure_source: "beneficiary_bank",
     failure_reason: "beneficiary_bank_offline",
     invoice_reference: "INV-2026-8804",
+  },
+  {
+    title: "NPCI Switch Timeout (Auto Retry)",
+    category: "Autonomous Retry",
+    vendor_name: "FastTrack Freight Express",
+    contact_id: "",
+    zoho_vendor_id: "",
+    amount: 12500000, // INR 1,25,000
+    failure_source: "gateway",
+    failure_reason: "npci_beneficiary_timeout",
+    invoice_reference: "INV-2026-8816",
   },
   {
     title: "Insufficient Balance (Finance Escalation)",
@@ -87,6 +134,17 @@ const PRESET_SIMULATIONS = [
     invoice_reference: "INV-2026-8805",
   },
   {
+    title: "Name Match Discrepancy (Human Review)",
+    category: "Human Review",
+    vendor_name: "Apollo Biotech Pharma Corp",
+    contact_id: "",
+    zoho_vendor_id: "",
+    amount: 29000000, // INR 2,90,000
+    failure_source: "validation",
+    failure_reason: "low_name_match",
+    invoice_reference: "INV-2026-8818",
+  },
+  {
     title: "Frozen Account (Deterministic Hard Block)",
     category: "Fraud Block",
     vendor_name: "Shadow Operations Corp",
@@ -97,6 +155,33 @@ const PRESET_SIMULATIONS = [
     failure_reason: "bank_account_frozen",
     invoice_reference: "INV-2026-8806",
   },
+];
+
+// Chaos Monkey Random Generator Datasets
+const CHAOS_VENDORS = [
+  "Reliance Green Energy Solutions",
+  "Larsen & Toubro Heavy Fab",
+  "Infosys Enterprise Digital Ltd",
+  "Adani Logistics & Ports",
+  "Sun Pharma Chemicals Ltd",
+  "Hero MotoCorp Component Vendor",
+  "Wipro Digital Infrastructure",
+  "Godrej Industrial Solutions",
+  "Hindalco Metals & Alloys",
+  "Cipla Active Pharmaceutical Ingredients",
+];
+
+const CHAOS_FAILURES = [
+  { source: "beneficiary_bank", reason: "invalid_ifsc_code" },
+  { source: "beneficiary_bank", reason: "bank_account_closed" },
+  { source: "beneficiary_bank", reason: "incorrect_branch_code" },
+  { source: "beneficiary_bank", reason: "kyc_document_pending" },
+  { source: "beneficiary_bank", reason: "beneficiary_bank_offline" },
+  { source: "gateway", reason: "npci_beneficiary_timeout" },
+  { source: "business", reason: "insufficient_funds" },
+  { source: "beneficiary_bank", reason: "bank_account_frozen" },
+  { source: "gateway", reason: "invalid_account_number" },
+  { source: "partner", reason: "beneficiary_name_discrepancy" },
 ];
 
 export const SimulateCaseModal: React.FC<SimulateCaseModalProps> = ({
@@ -124,6 +209,21 @@ export const SimulateCaseModal: React.FC<SimulateCaseModalProps> = ({
     setFailureSource(preset.failure_source);
     setFailureReason(preset.failure_reason);
     setInvoiceRef(preset.invoice_reference);
+  };
+
+  const handleGenerateChaosScenario = () => {
+    const randomVendor = CHAOS_VENDORS[Math.floor(Math.random() * CHAOS_VENDORS.length)];
+    const randomFailure = CHAOS_FAILURES[Math.floor(Math.random() * CHAOS_FAILURES.length)];
+    const randomAmountPaise = Math.floor(Math.random() * 80 + 10) * 10000000; // INR 1L to 90L
+    const randomInvNum = Math.floor(Math.random() * 9000 + 1000);
+
+    setVendorName(randomVendor);
+    setContactId("");
+    setZohoVendorId("");
+    setAmountPaise(randomAmountPaise);
+    setFailureSource(randomFailure.source);
+    setFailureReason(randomFailure.reason);
+    setInvoiceRef(`INV-2026-${randomInvNum}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -177,37 +277,48 @@ export const SimulateCaseModal: React.FC<SimulateCaseModalProps> = ({
           </button>
         </div>
 
-        {/* Preset Selection Strip */}
-        <div>
-          <span className="text-[11px] font-bold uppercase text-slate-400 mb-2 block flex items-center space-x-1.5">
+        {/* Header Strip with Chaos Monkey Trigger */}
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-bold uppercase text-slate-400 block flex items-center space-x-1.5">
             <Sparkles className="w-3.5 h-3.5 text-razor-400" />
-            <span>Select Scenario Preset</span>
+            <span>Select Scenario Preset ({PRESET_SIMULATIONS.length} Enterprise Presets)</span>
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
-            {PRESET_SIMULATIONS.map((preset, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleApplyPreset(preset)}
-                className={`p-2 rounded-lg text-left border transition flex flex-col justify-between ${
-                  vendorName === preset.vendor_name && failureReason === preset.failure_reason
-                    ? "bg-razor-950/70 border-razor-500 text-white ring-1 ring-razor-500"
-                    : "bg-slate-950 hover:bg-slate-850 border-slate-800 text-slate-300"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[11px] text-white truncate">{preset.title}</span>
-                  <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-razor-300 font-semibold">
-                    {preset.category}
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-400 mt-1 flex justify-between">
-                  <span>INR {(preset.amount / 100).toLocaleString("en-IN")}</span>
-                  <span className="text-rose-400 font-mono">{preset.failure_reason}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+
+          <button
+            type="button"
+            onClick={handleGenerateChaosScenario}
+            className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-600/50 text-indigo-300 hover:text-white text-[10px] font-bold uppercase tracking-wider transition active:scale-95 shadow-sm"
+          >
+            <Dices className="w-3.5 h-3.5 text-indigo-400" />
+            <span>🎲 Random Chaos Case</span>
+          </button>
+        </div>
+
+        {/* Preset Selection Strip */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+          {PRESET_SIMULATIONS.map((preset, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => handleApplyPreset(preset)}
+              className={`p-2 rounded-lg text-left border transition flex flex-col justify-between ${
+                vendorName === preset.vendor_name && failureReason === preset.failure_reason
+                  ? "bg-razor-950/70 border-razor-500 text-white ring-1 ring-razor-500"
+                  : "bg-slate-950 hover:bg-slate-850 border-slate-800 text-slate-300"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[11px] text-white truncate">{preset.title}</span>
+                <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-800 text-razor-300 font-semibold">
+                  {preset.category}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1 flex justify-between">
+                <span>INR {(preset.amount / 100).toLocaleString("en-IN")}</span>
+                <span className="text-rose-400 font-mono">{preset.failure_reason}</span>
+              </div>
+            </button>
+          ))}
         </div>
 
         {/* Simulation Configuration Form */}
