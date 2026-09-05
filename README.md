@@ -10,10 +10,8 @@ An AI-powered, human-governed system for resolving failed B2B vendor payouts on 
 
     AI reasons. Deterministic code executes. Humans authorize money movement.
 
-For the full architecture and implementation plan, see:
-- [antigrav_plan.md](./antigrav_plan.md) — full system design
-- [implementation_plan.md](./implementation_plan.md) — phase-by-phase build plan
-- [documentation/phase_1.md](./documentation/phase_1.md) — Phase 1 architecture, challenges, and resolutions
+For the full documentation and architecture specifications, see:
+- [documentation/phase_1.md](./documentation/phase_1.md) — Phase 1 architecture, models, and setup
 - [documentation/phase_2.md](./documentation/phase_2.md) — Phase 2 state machine specification and test suite
 - [documentation/phase_3.md](./documentation/phase_3.md) — Phase 3 deterministic failure classifier and test suite
 - [documentation/phase_4.md](./documentation/phase_4.md) — Phase 4 policy and authority engine specification and tests
@@ -27,7 +25,7 @@ For the full architecture and implementation plan, see:
 - [documentation/phase_12.md](./documentation/phase_12.md) — Phase 12 Test Case Engine and Evaluation Harness
 - [documentation/phase_13.md](./documentation/phase_13.md) — Phase 13 Next.js Mission Control Frontend Dashboard
 - [documentation/phase_14.md](./documentation/phase_14.md) — Phase 14 Demo Polish, Adversarial Testing, and Final Readiness
-- [documentation/demo_script.md](./documentation/demo_script.md) — Cinematic 3-minute presentation demo script
+- [documentation/demo_script.md](./documentation/demo_script.md) — 3-minute presentation demo script
 
 ---
 

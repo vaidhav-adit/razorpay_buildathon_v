@@ -255,12 +255,28 @@ export const ContextDrawer: React.FC<ContextDrawerProps> = ({ caseData }) => {
                     <span className="text-emerald-400 font-mono text-[10px]">{approvalPayload.new_fund_account_id}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-slate-500">Bank Registered Name:</span>
+                    <span className="text-white font-semibold">{approvalPayload.registered_name || caseData.vendor?.name || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-slate-500">Name Match Score:</span>
-                    <span className="text-emerald-400 font-bold">{approvalPayload.name_match_score || 95}%</span>
+                    <span className={`font-bold ${
+                      (approvalPayload.name_match_score !== undefined ? approvalPayload.name_match_score : 100) >= 85
+                        ? "text-emerald-400"
+                        : "text-rose-400"
+                    }`}>
+                      {approvalPayload.name_match_score !== undefined ? approvalPayload.name_match_score : (caseData.state === "HUMAN_REVIEW" ? 0 : 100)}%
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Account Status:</span>
-                    <span className="text-emerald-400 font-bold uppercase">{approvalPayload.validation_status || "ACTIVE"}</span>
+                    <span className={`font-bold uppercase ${
+                      approvalPayload.validation_status === "frozen" || approvalPayload.validation_status === "invalid"
+                        ? "text-rose-400"
+                        : "text-emerald-400"
+                    }`}>
+                      {approvalPayload.validation_status || (caseData.state === "HUMAN_REVIEW" ? "MISMATCH / REVIEW" : "ACTIVE")}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Simulation Flag:</span>

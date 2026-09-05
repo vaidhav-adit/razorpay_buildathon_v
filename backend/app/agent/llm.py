@@ -154,12 +154,13 @@ class LLMClient:
         # 2. Deterministic Regex / Heuristic Fallback
         heuristic = extract_banking_details_from_text(message_text)
         
-        # Name heuristic extraction (if name is mentioned after 'name:' or 'holder:')
+        # Name heuristic extraction (if name is mentioned after 'name:' or 'holder:' or 'registered name:')
         extracted_name = default_name
-        name_match = re.search(r"(?:name|holder|beneficiary)\s*[:=-]\s*([A-Za-z\s]+)", message_text, re.IGNORECASE)
+        name_match = re.search(r"(?:account\s*name|registered\s*name|name|holder|beneficiary)\s*[:=-]\s*([A-Za-z0-9\s&.,'-]+)", message_text, re.IGNORECASE)
         if name_match:
             candidate_name = name_match.group(1).split("\n")[0].strip()
-            if len(candidate_name) > 3:
+            candidate_name = re.sub(r"[.;,]+$", "", candidate_name).strip()
+            if len(candidate_name) >= 3:
                 extracted_name = candidate_name
 
         return ExtractedBankingData(

@@ -191,6 +191,20 @@ export const LiveGuidanceBanner: React.FC<LiveGuidanceBannerProps> = ({
         };
 
       case "PAYOUT_EXECUTED":
+        return {
+          stepBadge: "STEP 8 OF 9: PAYOUT DISBURSED — SETTLEMENT CONFIRMATION",
+          badgeColor: "bg-emerald-950 text-emerald-400 border-emerald-800",
+          headline: `Replacement payout of ${amountStr} initiated on RazorpayX.`,
+          explanation: `Payment was authorized by finance controller. Replacement payout executed. Reconciling settlement confirmation and sealing the cryptographic audit ledger.`,
+          actionPrompt: "Click below to seal cryptographic ledger and mark case as resolved:",
+          primaryAction: {
+            label: "Seal Ledger & Complete Case",
+            onClick: onRunStep,
+            icon: CheckCircle2,
+            color: "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30",
+          },
+        };
+
       case "CASE_RESOLVED":
         return {
           stepBadge: "WORKFLOW COMPLETE: CASE RESOLVED",

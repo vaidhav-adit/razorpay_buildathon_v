@@ -135,13 +135,19 @@ def approve_case_payout(
             detail=f"Recovery case '{case_id}' not found.",
         )
 
-    # State machine gate: Only cases currently staged at HUMAN_APPROVAL can be approved
-    if case.state != CaseState.HUMAN_APPROVAL and case.state != CaseState.HUMAN_APPROVAL.value:
+    # State machine gate: Cases in HUMAN_APPROVAL or HUMAN_REVIEW can be approved by controller
+    valid_states = {
+        CaseState.HUMAN_APPROVAL,
+        CaseState.HUMAN_APPROVAL.value,
+        CaseState.HUMAN_REVIEW,
+        CaseState.HUMAN_REVIEW.value,
+    }
+    if case.state not in valid_states:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
                 f"Cannot approve case '{case_id}'. Case is currently in '{case.state}', "
-                f"but must be in '{CaseState.HUMAN_APPROVAL.value}'."
+                f"but must be in 'HUMAN_APPROVAL' or 'HUMAN_REVIEW'."
             ),
         )
 
@@ -153,13 +159,49 @@ def approve_case_payout(
         .first()
     )
     if not approval:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No Approval staging record found for case '{case_id}'.",
+        fa_record = (
+            db.query(FundAccount)
+            .filter(FundAccount.recovery_case_id == case.id)
+            .order_by(FundAccount.created_at.desc())
+            .first()
         )
+        new_fa_id = fa_record.razorpay_fund_account_id if fa_record else None
+        vendor_name = case.vendor.name if case.vendor else "Vendor"
+        approval_payload = {
+            "case_id": case.id,
+            "vendor_name": vendor_name,
+            "registered_name": fa_record.validated_name if fa_record else vendor_name,
+            "invoice_reference": case.invoice_reference,
+            "amount_paise": case.amount,
+            "amount_inr": case.amount / 100.0,
+            "new_fund_account_id": new_fa_id,
+            "validation_score": fa_record.name_match_score if fa_record else 100,
+            "name_match_score": fa_record.name_match_score if fa_record else 100,
+            "recommended_action": "CREATE_PAYOUT",
+            "action": "execute_replacement_payout",
+        }
+        approval = Approval(
+            id=str(uuid.uuid4()),
+            case_id=case.id,
+            action_description="execute_replacement_payout",
+            payload=approval_payload,
+            decision=None,
+        )
+        db.add(approval)
+        db.commit()
 
     payload = approval.payload or {}
     new_fa_id = payload.get("new_fund_account_id")
+    if not new_fa_id:
+        fa_record = (
+            db.query(FundAccount)
+            .filter(FundAccount.recovery_case_id == case.id)
+            .order_by(FundAccount.created_at.desc())
+            .first()
+        )
+        if fa_record:
+            new_fa_id = fa_record.razorpay_fund_account_id
+
     amount = payload.get("amount_paise") or case.amount
 
     if not new_fa_id:
@@ -208,11 +250,10 @@ def approve_case_payout(
     if request.notes:
         approval.rejection_reason = request.notes
 
-    # 4. State machine transition: HUMAN_APPROVAL -> PAYOUT_EXECUTED -> CASE_RESOLVED
-    case.state = CaseState.CASE_RESOLVED.value if hasattr(CaseState.CASE_RESOLVED, "value") else "CASE_RESOLVED"
+    # 4. State machine transition: HUMAN_APPROVAL/HUMAN_REVIEW -> PAYOUT_EXECUTED
+    case.state = CaseState.PAYOUT_EXECUTED.value if hasattr(CaseState.PAYOUT_EXECUTED, "value") else "PAYOUT_EXECUTED"
     case.action_count = (case.action_count or 0) + 1
     case.human_intervention_count = (case.human_intervention_count or 0) + 1
-    case.resolved_at = datetime.now()
     db.commit()
     db.refresh(case)
 
@@ -238,11 +279,11 @@ def approve_case_payout(
         actor=request.decided_by,
         action="APPROVE_REPLACEMENT_PAYOUT",
         target=payout_res.id,
-        reason=request.notes or "Finance controller approved replacement payout.",
+        reason=request.notes or ("Finance controller authorized payout override from Human Review." if case.state == "HUMAN_REVIEW" else "Finance controller approved replacement payout."),
         input_data={"approval_id": approval.id, "decided_by": request.decided_by},
         output_data={
             "payout_id": payout_res.id,
-            "new_state": "CASE_RESOLVED",
+            "new_state": "PAYOUT_EXECUTED",
             "amount_paise": amount,
         },
         approval_required=True,
@@ -252,9 +293,9 @@ def approve_case_payout(
         case_id=case.id,
         case_number=case.case_number,
         decision="APPROVE",
-        state="CASE_RESOLVED",
+        state="PAYOUT_EXECUTED",
         payout_id=payout_res.id,
-        message=f"Replacement payout {payout_res.id} authorized and disbursed. Case marked as CASE_RESOLVED.",
+        message=f"Replacement payout {payout_res.id} authorized and disbursed. Case transitioned to PAYOUT_EXECUTED.",
     )
 
 
@@ -375,8 +416,54 @@ def get_case_detail(
     )
 
     audit_check = verify_chain(db, case.id)
-
     state_val = case.state if isinstance(case.state, str) else case.state.value
+
+    if not approval:
+        fa = (
+            db.query(FundAccount)
+            .filter(FundAccount.recovery_case_id == case.id)
+            .order_by(FundAccount.created_at.desc())
+            .first()
+        )
+        if fa:
+            vendor_name = vendor.name if vendor else "Vendor"
+            syn_payload = {
+                "case_id": case.id,
+                "vendor_name": vendor_name,
+                "registered_name": fa.validated_name or fa.account_holder_name or vendor_name,
+                "invoice_reference": case.invoice_reference or "INV-2026",
+                "amount_paise": case.amount,
+                "amount_inr": case.amount / 100.0,
+                "new_fund_account_id": fa.razorpay_fund_account_id,
+                "name_match_score": fa.name_match_score if fa.name_match_score is not None else 100,
+                "validation_status": fa.validation_status or "active",
+                "account_number_masked": fa.account_number_masked,
+                "ifsc": fa.ifsc,
+                "action": "human_review_divergence" if state_val in {CaseState.HUMAN_REVIEW.value, "HUMAN_REVIEW"} else "execute_replacement_payout",
+            }
+            approval_data = {
+                "id": f"syn_{fa.id[:8]}",
+                "action": syn_payload["action"],
+                "status": "PENDING",
+                "decision": None,
+                "requested_at": fa.created_at,
+                "decided_at": None,
+                "decided_by": None,
+                "payload": syn_payload,
+            }
+        else:
+            approval_data = None
+    else:
+        approval_data = {
+            "id": approval.id,
+            "action": approval.action,
+            "status": approval.status,
+            "decision": approval.decision,
+            "requested_at": approval.requested_at,
+            "decided_at": approval.decided_at,
+            "decided_by": approval.decided_by,
+            "payload": approval.payload,
+        }
 
     return CaseDetailResponse(
         id=case.id,
@@ -408,16 +495,7 @@ def get_case_detail(
             "status": payout.status,
             "mode": payout.mode,
         } if payout else None,
-        approval={
-            "id": approval.id,
-            "action": approval.action,
-            "status": approval.status,
-            "decision": approval.decision,
-            "requested_at": approval.requested_at,
-            "decided_at": approval.decided_at,
-            "decided_by": approval.decided_by,
-            "payload": approval.payload,
-        } if approval else None,
+        approval=approval_data,
         audit_verification={
             "status": audit_check.status,
             "is_valid": audit_check.is_valid,

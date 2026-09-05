@@ -211,7 +211,11 @@ class MockAccountValidationService:
             )
 
         # 2. Check for scenario overrides
-        override = self._overrides.get(fund_account_id) or self._overrides.get("*") or {}
+        override = (
+            self._overrides.get(fund_account_id)
+            or self._overrides.get("*")
+            or (next(iter(self._overrides.values())) if len(self._overrides) == 1 else {})
+        )
 
         account_status = override.get("account_status", "active")
         bank_registered_name = override.get("registered_name", registered_name or vendor_name)

@@ -241,6 +241,14 @@ export default function MissionControlDashboard() {
     try {
       await approveCase(selectedCaseId, notes);
       await Promise.all([loadSelectedCaseData(selectedCaseId), loadCases()]);
+
+      // Complete settlement reconciliation to CASE_RESOLVED
+      try {
+        await stepCase(selectedCaseId);
+        await Promise.all([loadSelectedCaseData(selectedCaseId), loadCases()]);
+      } catch {
+        // already terminal
+      }
     } catch (err) {
       console.error("Approve failed", err);
       alert("Human Approval Failed: " + err);

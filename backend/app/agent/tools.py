@@ -287,9 +287,20 @@ def tool_validate_fund_account(
         context=context,
     )
     evaluation = evaluate_validation_result(res)
+
+    # Persist validation results onto DB FundAccount entity
+    fa = db.query(FundAccount).filter(FundAccount.razorpay_fund_account_id == fund_account_id).first()
+    if fa:
+        fa.validation_status = res.account_status
+        fa.validated_name = res.registered_name
+        fa.name_match_score = res.name_match_score
+        fa.is_simulated_validation = res.is_simulated
+        db.commit()
+
     out = {
         "fund_account_id": res.fund_account_id,
         "account_status": res.account_status,
+        "registered_name": res.registered_name,
         "name_match_score": res.name_match_score,
         "is_valid": evaluation.is_valid,
         "next_state": evaluation.next_state.value if hasattr(evaluation.next_state, "value") else str(evaluation.next_state),
@@ -297,7 +308,7 @@ def tool_validate_fund_account(
     }
     _record_agent_action(
         db, case_id, "validate_fund_account",
-        {"fund_account_id": fund_account_id, "vendor_name": vendor_name},
+        {"fund_account_id": fund_account_id, "vendor_name": vendor_name, "registered_name": registered_name},
         out, PolicyLevel.CONTROLLED_MUTATION, PolicyDecision.ALLOW,
     )
     return out
@@ -313,6 +324,7 @@ def tool_prepare_replacement_payout(
     validation_score: int,
     db: Session,
     context: Optional[PolicyContext] = None,
+    registered_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Prepares the replacement payout card and creates the Approval record for human controller (Level 2).
@@ -320,12 +332,15 @@ def tool_prepare_replacement_payout(
     approval_payload = {
         "case_id": case_id,
         "vendor_name": vendor_name,
+        "registered_name": registered_name or vendor_name,
         "invoice_reference": invoice_reference,
         "amount_paise": amount,
         "amount_inr": amount / 100.0,
         "old_fund_account_id": old_fund_account_id,
         "new_fund_account_id": new_fund_account_id,
         "validation_score": validation_score,
+        "name_match_score": validation_score,
+        "validation_status": "active",
         "recommended_action": "CREATE_PAYOUT",
         "action": "execute_replacement_payout",
     }
@@ -348,3 +363,4 @@ def tool_prepare_replacement_payout(
     )
 
     return {"approval_id": approval.id, "status": "PENDING", "payload": approval_payload}
+

@@ -49,6 +49,8 @@ export interface CaseApprovalContext {
   payload?: {
     case_number?: string;
     vendor_id?: string;
+    vendor_name?: string;
+    registered_name?: string;
     contact_id?: string;
     old_fund_account_id?: string;
     new_fund_account_id?: string;
@@ -56,7 +58,9 @@ export interface CaseApprovalContext {
     amount_inr?: number;
     name_match_score?: number;
     validation_status?: string;
+    divergence_reason?: string;
     notes?: string;
+    [key: string]: any;
   };
 }
 

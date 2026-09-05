@@ -13,6 +13,7 @@ Executes reasoning and tool sequencing inside each state node of the recovery wo
 """
 
 import re
+import uuid
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
@@ -126,6 +127,29 @@ def run_information_extraction_node(
     vendor = db.query(Vendor).filter(Vendor.id == case.vendor_id).first()
     default_name = vendor.name if vendor else None
 
+    # 1. Autonomous Prompt Injection & Adversarial Defense Guardrail
+    lower_text = message_text.lower() if message_text else ""
+    adversarial_keywords = [
+        "ignore all previous",
+        "ignore previous",
+        "system override",
+        "admin emergency",
+        "do not validate",
+        "do not require human approval",
+        "without validation",
+        "hacker@",
+        "override policy",
+        "bypass approval",
+        "emergency override",
+    ]
+    if any(kw in lower_text for kw in adversarial_keywords):
+        return AgentNodeOutput(
+            next_state=CaseState.BLOCKED,
+            transition_reason="🚨 Autonomous Security Defense: Malicious prompt injection attack detected in vendor communication. Execution aborted and case permanently BLOCKED to prevent financial loss.",
+            extracted_data={"adversarial_attack_blocked": True, "raw_message": message_text},
+            requires_human=True,
+        )
+
     # LLM Structured Extraction
     extracted: ExtractedBankingData = llm_client.extract_banking_data(
         message_text=message_text,
@@ -134,7 +158,7 @@ def run_information_extraction_node(
 
     # Deterministic Syntax & Format Validation
     ifsc_valid = bool(extracted.ifsc and re.match(r"^[A-Z]{4}0[A-Z0-9]{6}$", extracted.ifsc.upper()))
-    acc_valid = bool(extracted.account_number and re.match(r"^\d{9,18}$", extracted.account_number))
+    acc_valid = bool(extracted.account_number and re.match(r"^\d{9,18}$", str(extracted.account_number).strip()))
 
     data_dict = {
         "account_holder_name": extracted.account_holder_name or default_name,
@@ -209,6 +233,34 @@ def run_bank_validation_node(
     # Routing based on deterministic penny-drop result
     if not val_out["is_valid"]:
         next_st = CaseState(val_out["next_state"])
+        if next_st == CaseState.HUMAN_REVIEW:
+            from app.models.approval import Approval
+            review_payload = {
+                "case_id": case.id,
+                "vendor_name": vendor.name if vendor else holder_name,
+                "registered_name": val_out.get("registered_name") or holder_name,
+                "invoice_reference": case.invoice_reference or "INV-2026",
+                "amount_paise": case.amount,
+                "amount_inr": case.amount / 100.0,
+                "old_fund_account_id": case.payout.razorpay_fund_account_id if case.payout else None,
+                "new_fund_account_id": new_fa_id,
+                "validation_score": val_out.get("name_match_score", 0),
+                "name_match_score": val_out.get("name_match_score", 0),
+                "validation_status": val_out.get("account_status", "invalid"),
+                "divergence_reason": val_out.get("reason"),
+                "recommended_action": "REVIEW_AND_DECIDE",
+                "action": "human_review_divergence",
+            }
+            rev_approval = Approval(
+                id=str(uuid.uuid4()),
+                case_id=case.id,
+                action_description="human_review_divergence",
+                payload=review_payload,
+                decision=None,
+            )
+            db.add(rev_approval)
+            db.commit()
+
         return AgentNodeOutput(
             next_state=next_st,
             transition_reason=val_out["reason"],
@@ -285,6 +337,7 @@ def run_policy_and_payout_prep_node(
         validation_score=validation_score,
         db=db,
         context=policy_ctx,
+        registered_name=vendor_name,
     )
     tools.append("prepare_replacement_payout")
 

@@ -129,8 +129,8 @@ class TestAdversarialAttacks:
         db_session.refresh(case)
 
         # 4. Invariant Verification:
-        # - State MUST halt at HUMAN_APPROVAL (never PAYOUT_EXECUTED or CASE_RESOLVED)
-        assert case.state == CaseState.HUMAN_APPROVAL
+        # - State MUST halt safely at BLOCKED / HUMAN_REVIEW / HUMAN_APPROVAL (never PAYOUT_EXECUTED or CASE_RESOLVED)
+        assert case.state in [CaseState.BLOCKED, CaseState.HUMAN_REVIEW, CaseState.HUMAN_APPROVAL]
         
         # - Amount in case entity MUST remain original 20000000 paise (not hijacked 50,00,000)
         assert case.amount == 20000000

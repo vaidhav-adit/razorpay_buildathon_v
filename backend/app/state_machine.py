@@ -167,6 +167,7 @@ ALLOWED_TRANSITIONS: Dict[CaseState, Set[CaseState]] = {
     # 13. Replacement payout initiated with Razorpay API
     CaseState.PAYOUT_EXECUTED: {
         CaseState.PAYOUT_CONFIRMED,      # Payout processed successfully
+        CaseState.CASE_RESOLVED,         # Direct settlement & ledger sealing
         CaseState.PAYOUT_FAILED,         # Replacement payout failed (new exception loop)
         CaseState.ESCALATED,             # Payout execution returned gateway error
     },

@@ -54,3 +54,11 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 
+# ── Internal Planning and Scratch Files ──────────────────────────────────────
+antigrav_plan.md
+implementation_plan.md
+Absolutely.md
+must_follow.md
+razorpay_api.md
+
+

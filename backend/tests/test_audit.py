@@ -252,13 +252,33 @@ class TestAuditAPIEndpoint:
 
     def test_get_case_audit_endpoint(self):
         """FastAPI endpoint returns verification status and event chain."""
-        client = TestClient(app)
-        response = client.get("/cases/non_existent_case/audit")
-        assert response.status_code == 200
+        from app.database import Base, get_db
+        import app.models  # noqa: F401
+        from app.main import app
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.pool import StaticPool
 
-        data = response.json()
-        assert "case_id" in data
-        assert "verification" in data
-        assert "events" in data
-        assert data["verification"]["status"] == "EMPTY"
-        assert data["verification"]["is_valid"] is True
+        engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+        Base.metadata.create_all(bind=engine)
+        TestSession = sessionmaker(bind=engine)
+
+        def override_db():
+            db = TestSession()
+            try:
+                yield db
+            finally:
+                db.close()
+
+        app.dependency_overrides[get_db] = override_db
+        with TestClient(app) as client:
+            response = client.get("/cases/non_existent_case/audit")
+            assert response.status_code == 200
+
+            data = response.json()
+            assert "case_id" in data
+            assert "verification" in data
+            assert "events" in data
+            assert data["verification"]["status"] == "EMPTY"
+            assert data["verification"]["is_valid"] is True
+        app.dependency_overrides.clear()
