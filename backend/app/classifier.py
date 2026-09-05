@@ -191,14 +191,73 @@ def classify_failure(source: Optional[str], reason: Optional[str]) -> Classifica
             suggested_action=match["suggested_action"],
         )
 
-    # Safe fallback for unmapped / unexpected error codes
+    # Dynamic Semantic Reasoning for Custom & Unmapped Exception Codes
+    # Rather than failing or blocking unknown codes, the agent intelligently categorizes
+    # the failure based on semantic intent of the reason and source.
+    clean_str = f"{clean_source} {clean_reason}".lower()
+
+    # Category 1: Fraud, Legal Freeze, or Blacklisting -> BLOCK
+    if any(k in clean_reason for k in ["frozen", "freeze", "blacklist", "fraud", "sanction", "suspicious", "court", "unauthorized"]):
+        return ClassificationResult(
+            strategy=RecoveryStrategy.BLOCK,
+            source=clean_source,
+            reason=clean_reason,
+            description=f"Autonomous security defense classified '{clean_reason}' as a fatal compliance or frozen account risk.",
+            is_retryable=False,
+            requires_vendor_contact=False,
+            requires_human_attention=True,
+            suggested_action="Permanently block payout and lock case to prevent loss of funds.",
+        )
+
+    # Category 2: Internal Treasury or Business Balance Shortage -> FINANCE_ESCALATION
+    if any(k in clean_reason for k in ["insufficient", "balance", "funds", "treasury", "credit_limit", "debit_limit", "corporate_limit"]) or (clean_source in ["business", "internal"] and "fund" in clean_str):
+        return ClassificationResult(
+            strategy=RecoveryStrategy.FINANCE_ESCALATION,
+            source=clean_source,
+            reason=clean_reason,
+            description=f"Autonomous semantic analysis classified '{clean_reason}' as an internal company liquidity constraint.",
+            is_retryable=False,
+            requires_vendor_contact=False,
+            requires_human_attention=True,
+            suggested_action="Escalate to internal finance/treasury team via Zoho Books to replenish account balance.",
+        )
+
+    # Category 3: Vendor Banking, Account, IFSC, KYC, or Credential Discrepancies -> VENDOR_REMEDIATION
+    # Prioritized before transient network checks so that gateway-reported account errors (e.g. gateway reporting invalid_ifsc)
+    # properly trigger vendor remediation!
+    if any(k in clean_reason for k in ["ifsc", "account", "closed", "invalid", "beneficiary", "holder", "branch", "kyc", "bank_account", "details", "mismatch", "format", "credential", "name"]):
+        return ClassificationResult(
+            strategy=RecoveryStrategy.VENDOR_REMEDIATION,
+            source=clean_source,
+            reason=clean_reason,
+            description=f"Autonomous semantic classifier identified '{clean_reason}' ({clean_source}) as a vendor banking discrepancy requiring updated credentials.",
+            is_retryable=False,
+            requires_vendor_contact=True,
+            requires_human_attention=False,
+            suggested_action=f"Initiate autonomous WhatsApp remediation to vendor to collect verified replacement bank details for '{clean_reason}'.",
+        )
+
+    # Category 4: Transient Network, Switch, or Core Banking Downtime -> SCHEDULE_RETRY
+    if any(k in clean_str for k in ["offline", "timeout", "down", "maintenance", "technical", "network", "switch", "transient", "503", "504", "502", "unavailable"]):
+        return ClassificationResult(
+            strategy=RecoveryStrategy.SCHEDULE_RETRY,
+            source=clean_source,
+            reason=clean_reason,
+            description=f"Autonomous semantic analysis classified '{clean_reason}' ({clean_source}) as a transient gateway/bank switch downtime event.",
+            is_retryable=True,
+            requires_vendor_contact=False,
+            requires_human_attention=False,
+            suggested_action="Queue automated payout retry after short backoff without disturbing vendor.",
+        )
+
+    # Category 5: Unrecognized / Alien Failure Codes -> UNKNOWN_FAILURE (requires human review/investigation)
     return ClassificationResult(
         strategy=RecoveryStrategy.UNKNOWN_FAILURE,
         source=clean_source,
         reason=clean_reason,
-        description=f"Unrecognized payout failure reason '{clean_reason}' from source '{clean_source}'.",
+        description=f"Unrecognized payout failure reason '{clean_reason}' from source '{clean_source}'. Requires human investigation.",
         is_retryable=False,
         requires_vendor_contact=False,
         requires_human_attention=True,
-        suggested_action="Escalate to human operations for manual triage and root-cause analysis.",
+        suggested_action=f"Manually investigate failure reason '{clean_reason}' and determine appropriate recovery procedure.",
     )

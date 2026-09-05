@@ -18,6 +18,7 @@ Interactive API docs are available at:
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.health import router as health_router
 from app.api.audit import router as audit_router
@@ -26,6 +27,7 @@ from app.api.zoho_webhooks import router as zoho_webhook_router
 from app.api.vendor_communication import router as vendor_router
 from app.api.cases import router as cases_router
 from app.api.evaluation import router as evaluation_router
+from app.api.stream import router as stream_router
 
 
 # ── Lifecycle manager ─────────────────────────────────────────────────────────
@@ -48,10 +50,19 @@ app = FastAPI(
         "The agent investigates failures, communicates with vendors, validates corrected "
         "banking details, and prepares replacement payouts for human authorization."
     ),
-    version="0.12.0",  # Updated for Phase 12
+    version="0.14.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
+)
+
+# ── CORS Middleware ───────────────────────────────────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins in development (including http://localhost:3000)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Routers ───────────────────────────────────────────────────────────────────
@@ -61,6 +72,7 @@ app.include_router(webhook_router)
 app.include_router(zoho_webhook_router)
 app.include_router(vendor_router)
 app.include_router(cases_router)
+app.include_router(stream_router)
 app.include_router(evaluation_router)
 
 # Future routers (added as phases complete):

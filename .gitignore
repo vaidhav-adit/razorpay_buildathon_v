@@ -43,3 +43,14 @@ backend/alembic/versions/__pycache__/
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
+
+# ── Node.js / Next.js ──────────────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+**/out/
+*.tsbuildinfo
+next-env.d.ts
+

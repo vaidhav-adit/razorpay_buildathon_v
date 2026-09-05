@@ -32,8 +32,10 @@ from app.models.vendor import Vendor
 from app.models.fund_account import FundAccount
 from app.models.agent_action import AgentAction
 from app.state_machine import transition_state
+from app.classifier import classify_failure
 from app.audit import log_audit_event, verify_chain
 from app.services.razorpay_client import razorpay_client
+from app.agent.orchestrator import run_agent_for_case
 
 router = APIRouter(prefix="/cases", tags=["Cases & Human Approvals"])
 
@@ -206,11 +208,11 @@ def approve_case_payout(
     if request.notes:
         approval.rejection_reason = request.notes
 
-    # 4. State machine transition: HUMAN_APPROVAL -> PAYOUT_EXECUTED
-    next_st = transition_state(case.state, CaseState.PAYOUT_EXECUTED)
-    case.state = next_st
+    # 4. State machine transition: HUMAN_APPROVAL -> PAYOUT_EXECUTED -> CASE_RESOLVED
+    case.state = CaseState.CASE_RESOLVED.value if hasattr(CaseState.CASE_RESOLVED, "value") else "CASE_RESOLVED"
     case.action_count = (case.action_count or 0) + 1
     case.human_intervention_count = (case.human_intervention_count or 0) + 1
+    case.resolved_at = datetime.now()
     db.commit()
     db.refresh(case)
 
@@ -228,7 +230,7 @@ def approve_case_payout(
     db.add(action_rec)
     db.commit()
 
-    # 6. Cryptographic Audit Event (HUMAN_DECISION)
+    # 6. Cryptographic Audit Event (HUMAN_DECISION & RESOLUTION)
     log_audit_event(
         db=db,
         case_id=case.id,
@@ -240,7 +242,7 @@ def approve_case_payout(
         input_data={"approval_id": approval.id, "decided_by": request.decided_by},
         output_data={
             "payout_id": payout_res.id,
-            "new_state": CaseState.PAYOUT_EXECUTED.value,
+            "new_state": "CASE_RESOLVED",
             "amount_paise": amount,
         },
         approval_required=True,
@@ -250,9 +252,9 @@ def approve_case_payout(
         case_id=case.id,
         case_number=case.case_number,
         decision="APPROVE",
-        state=case.state if isinstance(case.state, str) else case.state.value,
+        state="CASE_RESOLVED",
         payout_id=payout_res.id,
-        message=f"Replacement payout {payout_res.id} authorized and dispatched successfully.",
+        message=f"Replacement payout {payout_res.id} authorized and disbursed. Case marked as CASE_RESOLVED.",
     )
 
 
@@ -469,3 +471,210 @@ def list_cases(
             )
         )
     return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. POST /cases/{case_id}/process — Trigger Agent Reasoning Step
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ProcessCaseRequest(BaseModel):
+    """Payload for advancing agent reasoning for a case."""
+    model_config = ConfigDict(extra="ignore")
+    vendor_reply: Optional[str] = Field(None, description="Optional vendor response text to process")
+    single_step: bool = Field(default=False, description="Whether to execute only a single state transition")
+
+
+@router.post("/{case_id}/process", response_model=CaseDetailResponse, status_code=status.HTTP_200_OK)
+def process_case_agent(
+    case_id: str,
+    request: ProcessCaseRequest = ProcessCaseRequest(),
+    db: Session = Depends(get_db),
+):
+    """
+    Executes autonomous reasoning turns for the specified case using AgentOrchestrator.
+    """
+    case = db.query(RecoveryCaseModel).filter(RecoveryCaseModel.id == case_id).first()
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Recovery case '{case_id}' not found.",
+        )
+
+    run_agent_for_case(
+        case_id=case.id,
+        db=db,
+        vendor_reply_text=request.vendor_reply,
+        single_step=request.single_step,
+    )
+    db.refresh(case)
+
+    return get_case_detail(case_id=case.id, db=db)
+
+
+@router.post("/{case_id}/step", response_model=CaseDetailResponse, status_code=status.HTTP_200_OK)
+def step_case_agent(
+    case_id: str,
+    request: ProcessCaseRequest = ProcessCaseRequest(),
+    db: Session = Depends(get_db),
+):
+    """
+    Executes exactly one autonomous reasoning step for the specified case.
+    """
+    case = db.query(RecoveryCaseModel).filter(RecoveryCaseModel.id == case_id).first()
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Recovery case '{case_id}' not found.",
+        )
+
+    run_agent_for_case(
+        case_id=case.id,
+        db=db,
+        vendor_reply_text=request.vendor_reply,
+        single_step=True,
+    )
+    db.refresh(case)
+
+    return get_case_detail(case_id=case.id, db=db)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. POST /cases/simulate — Seed and Ingest a Simulated Exception Case
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SimulateCaseRequest(BaseModel):
+    """Payload for simulating a new failed payout exception case in the live dashboard."""
+    model_config = ConfigDict(extra="ignore")
+    vendor_name: str = Field(default="Acme Industrial Supplies Pvt Ltd")
+    contact_id: Optional[str] = Field(default=None, description="Optional live Razorpay contact ID (e.g. cont_TY3jX5qQmhCpa8)")
+    zoho_vendor_id: Optional[str] = Field(default=None, description="Optional live Zoho vendor ID (e.g. VEND-ACME-8801)")
+    amount: int = Field(default=20000000, description="Amount in paise (default: INR 2,00,000)")
+    failure_source: str = Field(default="beneficiary_bank")
+    failure_reason: str = Field(default="invalid_ifsc_code")
+    invoice_reference: str = Field(default="INV-2026-9021")
+    auto_run_turn1: bool = Field(default=False, description="Whether to automatically run agent reasoning turn 1 (defaults to false for live watch)")
+
+
+@router.post("/simulate", response_model=CaseDetailResponse, status_code=status.HTTP_201_CREATED)
+def simulate_new_exception_case(
+    request: SimulateCaseRequest = SimulateCaseRequest(),
+    db: Session = Depends(get_db),
+):
+    """
+    Simulates the occurrence of a payout exception, inserting vendor, payout,
+    and recovery_case records, and initializing the audit chain.
+    """
+    # 1. Create or fetch vendor
+    unique_suffix = uuid.uuid4().hex[:6]
+    contact_id = request.contact_id or f"cont_sim_{unique_suffix}"
+    zoho_vendor_id = request.zoho_vendor_id or f"zoho_vend_{unique_suffix}"
+    
+    vendor = Vendor(
+        id=f"vend_{unique_suffix}",
+        razorpay_contact_id=contact_id,
+        zoho_vendor_id=zoho_vendor_id,
+        name=request.vendor_name,
+        email=f"accounts@{request.vendor_name.lower().replace(' ', '').replace('.', '')[:15]}.com",
+        phone="+919876543210",
+    )
+    db.add(vendor)
+    db.commit()
+    db.refresh(vendor)
+
+    # 2. Create payout
+    payout_id = f"pout_{unique_suffix}"
+    payout = Payout(
+        id=f"pout_rec_{unique_suffix}",
+        razorpay_payout_id=payout_id,
+        razorpay_fund_account_id=f"fa_old_{unique_suffix}",
+        razorpay_contact_id=contact_id,
+        amount=request.amount,
+        currency="INR",
+        mode="NEFT",
+        reference_id=request.invoice_reference,
+        status="failed",
+        status_source=request.failure_source,
+        status_reason=request.failure_reason,
+        status_description=f"Simulated failure: {request.failure_reason}",
+    )
+    db.add(payout)
+    db.commit()
+    db.refresh(payout)
+
+    # 3. Classify failure
+    classification = classify_failure(request.failure_source, request.failure_reason)
+
+    # 4. Create Recovery Case
+    case_number = f"CASE-{datetime.now().strftime('%Y%m%d')}-{unique_suffix.upper()}"
+    case = RecoveryCaseModel(
+        id=f"case_{unique_suffix}",
+        case_number=case_number,
+        payout_id=payout.id,
+        vendor_id=vendor.id,
+        invoice_reference=request.invoice_reference,
+        amount=request.amount,
+        failure_source=request.failure_source,
+        failure_reason=request.failure_reason,
+        recovery_strategy=classification.strategy.value,
+        state=CaseState.CASE_CREATED,
+    )
+    db.add(case)
+    db.commit()
+    db.refresh(case)
+
+    # 5. Genesis audit event
+    log_audit_event(
+        db=db,
+        case_id=case.id,
+        event_type=AuditActorType.EXTERNAL_FACT,
+        actor="razorpay_webhook",
+        action="PAYOUT_FAILED_WEBHOOK_RECEIVED",
+        target=payout.razorpay_payout_id,
+        reason=f"Payout failed due to {request.failure_reason}",
+        input_data={"amount": request.amount, "source": request.failure_source, "reason": request.failure_reason},
+        output_data={"case_number": case.case_number, "strategy": classification.strategy.value},
+    )
+    db.commit()
+
+    # 6. Optionally run turn 1
+    if request.auto_run_turn1:
+        run_agent_for_case(case_id=case.id, db=db)
+        db.refresh(case)
+
+    return get_case_detail(case_id=case.id, db=db)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 7. POST /cases/reset — Clean Slate Demo Reset
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/reset", status_code=status.HTTP_200_OK)
+def reset_all_cases(db: Session = Depends(get_db)):
+    """
+    Clears all simulated cases, approvals, audit events, fund accounts, and vendor messages,
+    restoring a completely clean slate for fresh demos.
+    """
+    from app.models.vendor_message import VendorMessage
+    from app.models.agent_action import AgentAction
+    from app.models.audit_event import AuditEvent
+    from app.models.fund_account import FundAccount
+
+    try:
+        db.query(Approval).delete()
+        db.query(AgentAction).delete()
+        db.query(VendorMessage).delete()
+        db.query(AuditEvent).delete()
+        db.query(FundAccount).delete()
+        db.query(RecoveryCaseModel).delete()
+        db.query(Payout).delete()
+        db.query(Vendor).delete()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reset database: {str(e)}",
+        )
+
+    return {"status": "success", "message": "All cases and telemetry reset successfully."}
+

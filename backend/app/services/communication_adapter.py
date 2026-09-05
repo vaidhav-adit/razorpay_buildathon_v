@@ -81,8 +81,14 @@ def extract_banking_details_from_text(text: str) -> Dict[str, Any]:
 
     acc_matches = ACCOUNT_NUMBER_REGEX.findall(text)
     if acc_matches:
-        # If multiple numbers found, pick the longest or first valid account number
         extracted["account_number"] = acc_matches[0]
+
+    if "ifsc" in extracted and "account_number" in extracted:
+        extracted["is_syntax_valid"] = True
+    elif "ifsc" in extracted or "account_number" in extracted:
+        extracted["is_syntax_valid"] = False
+    else:
+        return {}
 
     return extracted
 

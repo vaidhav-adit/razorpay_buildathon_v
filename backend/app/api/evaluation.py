@@ -8,6 +8,7 @@ Exposes:
   GET  /evaluation/scenarios  — Returns the 10 predefined evaluation test scenario definitions.
 """
 
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Query, HTTPException, status
 from pydantic import BaseModel
@@ -44,7 +45,7 @@ def run_evaluation_benchmark(
             )
         single_result = evaluation_harness.run_scenario(scenario)
         report = EvaluationReport(
-            timestamp=single_result.execution_time_ms,
+            timestamp=datetime.now(),
             total_scenarios=1,
             passed_scenarios=1 if single_result.passed else 0,
             failed_scenarios=0 if single_result.passed else 1,

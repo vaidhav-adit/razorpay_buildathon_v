@@ -60,6 +60,13 @@ class ScenarioExecutionResult(BaseModel):
     total_agent_actions: int
     execution_time_ms: float
     error_message: Optional[str] = None
+    vendor_name: Optional[str] = None
+    amount: Optional[int] = None
+    invoice_reference: Optional[str] = None
+    vendor_reply_text: Optional[str] = None
+    actions: List[Dict[str, Any]] = []
+    audit_events: List[Dict[str, Any]] = []
+    narrative: Optional[str] = None
 
 
 class EvaluationReport(BaseModel):
@@ -210,6 +217,50 @@ class EvaluationHarness:
             audit_res = verify_chain(db, case.id)
             audit_verified = audit_res.is_valid and audit_res.status == "VERIFIED"
 
+            # Serialize actions and audit events for UI inspector transparency
+            actions_list = [
+                {
+                    "id": a.id,
+                    "tool_name": a.tool_name,
+                    "actor": a.actor,
+                    "policy_level": a.policy_level,
+                    "policy_decision": a.policy_decision,
+                    "input_payload": a.input_payload,
+                    "output_payload": a.output_payload,
+                    "timestamp": a.timestamp.isoformat() if a.timestamp else None,
+                }
+                for a in actions
+            ]
+
+            audit_events_db = (
+                db.query(AuditEvent)
+                .filter(AuditEvent.case_id == case.id)
+                .order_by(AuditEvent.id.asc())
+                .all()
+            )
+            audit_list = [
+                {
+                    "id": ae.id,
+                    "event_type": ae.event_type,
+                    "actor": ae.actor,
+                    "action": ae.action,
+                    "target": ae.target,
+                    "reason": ae.reason,
+                    "event_hash": ae.event_hash,
+                    "previous_hash": ae.previous_hash,
+                    "approval_required": ae.approval_required,
+                    "timestamp": ae.timestamp.isoformat() if ae.timestamp else None,
+                }
+                for ae in audit_events_db
+            ]
+
+            # Build narrative explanation of this scenario's resolution
+            narrative = (
+                f"Scenario '{scenario.name}' executed with failure code '{scenario.failure_reason}'. "
+                f"RX-AURA diagnosed the root cause, selected strategy '{strat_val}', executed {len(actions)} "
+                f"deterministic autonomous actions, and concluded at state '{final_st_val}'."
+            )
+
             # Overall scenario pass condition
             passed = (
                 diag_correct
@@ -232,7 +283,9 @@ class EvaluationHarness:
             strat_val = "ERROR"
             final_st_val = "ERROR"
             exp_st_val = scenario.expected_final_state.value
-            actions = []
+            actions_list = []
+            audit_list = []
+            narrative = f"Execution failed due to unhandled error: {e}"
         finally:
             validation_service.clear_overrides()
             db.close()
@@ -256,9 +309,16 @@ class EvaluationHarness:
             unauthorized_financial_actions=unauth_financial_actions,
             data_extraction_correct=data_extraction_correct,
             audit_chain_verified=audit_verified,
-            total_agent_actions=len(actions),
+            total_agent_actions=len(actions_list),
             execution_time_ms=elapsed_ms,
             error_message=error_msg,
+            vendor_name=scenario.vendor_name,
+            amount=scenario.amount,
+            invoice_reference=scenario.invoice_reference,
+            vendor_reply_text=scenario.vendor_reply_text,
+            actions=actions_list,
+            audit_events=audit_list,
+            narrative=narrative,
         )
 
     def run_all_scenarios(self) -> EvaluationReport:
