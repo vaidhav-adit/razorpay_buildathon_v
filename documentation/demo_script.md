@@ -1,6 +1,6 @@
-# RazorpayX Exception Resolution Agent — Cinematic Demo Script
+# RX-AURA 3-Minute Live Demo Script
 
-This script provides a structured **3-minute walkthrough** for demonstrating the RazorpayX Autonomous Exception Resolution Agent to evaluators, judges, or executive leadership.
+This script provides a structured **3-minute walkthrough** for demonstrating the RazorpayX Autonomous Unified Resolution Agent (RX-AURA) to evaluators, judges, or executive leadership.
 
 ---
 

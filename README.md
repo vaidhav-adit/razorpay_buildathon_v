@@ -1,4 +1,4 @@
-# RX-AURA: Autonomous RazorpayX Exception Resolution Agent
+# RX-AURA: RazorpayX Autonomous Unified Resolution Agent
 
 Autonomous B2B payment exception recovery engine using Agentic AI, deterministic finite state machines, and cryptographic human-in-the-loop governance.
 

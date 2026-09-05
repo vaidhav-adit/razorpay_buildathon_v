@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "RX-AURA | RazorpayX Autonomous Payout Exception Recovery Agent",
+  title: "RX-AURA | RazorpayX Autonomous Unified Resolution Agent",
   description:
     "Autonomous, human-governed system for resolving failed B2B vendor payouts with cryptographic audit ledger.",
 };

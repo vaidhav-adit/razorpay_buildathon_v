@@ -39,7 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   RX-AURA
                 </span>
                 <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-razor-950 text-razor-400 border border-razor-800/80 font-bold tracking-wider">
-                  AUTONOMOUS RECOVERY AGENT
+                  AUTONOMOUS UNIFIED RESOLUTION AGENT
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-medium">
