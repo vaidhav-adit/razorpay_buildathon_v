@@ -108,6 +108,26 @@ class AgentOrchestrator:
                     if single_step:
                         break
                     continue
+                elif strat_val in {RecoveryStrategy.SCHEDULE_RETRY.value, "SCHEDULE_RETRY"}:
+                    if single_step:
+                        self._apply_transition(
+                            case,
+                            CaseState.POLICY_CHECK,
+                            f"Automated Retry Execution: Switch recovered. Re-verifying limits and staging replacement payout.",
+                            db,
+                        )
+                        break
+                    else:
+                        # Initial ingestion queues retry schedule and safely halts
+                        break
+                elif strat_val in {RecoveryStrategy.FINANCE_ESCALATION.value, "FINANCE_ESCALATION"}:
+                    self._apply_transition(
+                        case,
+                        CaseState.ESCALATED,
+                        f"Internal Liquidity Shortage: Generated Zoho Books Treasury Requisition Ticket #TR-8805. Escalated to internal treasury with 0 vendor disturbance.",
+                        db,
+                    )
+                    break
                 elif strat_val in {RecoveryStrategy.BLOCK.value, "BLOCK"} or case.failure_reason == "bank_account_frozen":
                     self._apply_transition(case, CaseState.BLOCKED, "Fatal compliance/fraud risk. Autonomous recovery aborted.", db)
                     break
@@ -115,8 +135,6 @@ class AgentOrchestrator:
                     self._apply_transition(case, CaseState.HUMAN_REVIEW, "Unrecognized failure reason safely diverted to Human Review for investigation.", db)
                     break
                 else:
-                    # Non-vendor strategy (e.g. SCHEDULE_RETRY, FINANCE_ESCALATION)
-                    # Safe halt at RECOVERY_STRATEGY_SELECTED: zero vendor outreach
                     break
 
             # ── Node 3: VENDOR_CONTACTED ─────────────────────────────────────

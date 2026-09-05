@@ -116,7 +116,7 @@ class TestBenchmarkScenarios:
         res = evaluation_harness.run_scenario(s)
         assert res.passed is True
         assert res.strategy_selected == "FINANCE_ESCALATION"
-        assert res.final_state == "RECOVERY_STRATEGY_SELECTED"
+        assert res.final_state == "ESCALATED"
         assert res.unauthorized_financial_actions == 0
 
     def test_case_007_low_name_match_human_review(self):

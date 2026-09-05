@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Lock,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 
 interface LiveGuidanceBannerProps {
@@ -67,8 +68,13 @@ export const LiveGuidanceBanner: React.FC<LiveGuidanceBannerProps> = ({
             stepBadge: "STEP 2 OF 5: AUTOMATED RETRY QUEUED",
             badgeColor: "bg-blue-950 text-blue-400 border-blue-800",
             headline: "Beneficiary bank offline. Controlled retry scheduled with zero vendor contact.",
-            actionPrompt: "Transient bank downtime detected. Gateway retry scheduled automatically.",
-            primaryAction: null,
+            actionPrompt: "Transient bank downtime detected. Click below to simulate switch recovery & execute retry:",
+            primaryAction: {
+              label: "Execute Scheduled Retry",
+              onClick: onRunStep,
+              icon: RefreshCw,
+              color: "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30",
+            },
           };
         }
         if (caseData.recovery_strategy === "FINANCE_ESCALATION") {
@@ -192,6 +198,16 @@ export const LiveGuidanceBanner: React.FC<LiveGuidanceBannerProps> = ({
           headline: `Success! Replacement payout of ${amountStr} disbursed and confirmed.`,
           explanation: `Replacement payout successfully initiated on RazorpayX. Zoho Books accounting records updated. Complete SHA-256 cryptographic audit ledger verified 100% intact.`,
           actionPrompt: "Workflow complete. You can simulate another case from the top bar.",
+          primaryAction: null,
+        };
+
+      case "ESCALATED":
+        return {
+          stepBadge: "FINANCE ESCALATED: TICKET CREATED",
+          badgeColor: "bg-amber-950 text-amber-400 border-amber-800",
+          headline: `Internal Liquidity Shortage: Ticket #TR-8805 dispatched to Treasury.`,
+          explanation: `Payout failed due to master account insufficient balance. RX-AURA logged an internal Zoho Books replenishment ticket and archived the case with 0 vendor disturbance.`,
+          actionPrompt: "Treasury ticket dispatched in Zoho Books. Case archived cleanly.",
           primaryAction: null,
         };
 
