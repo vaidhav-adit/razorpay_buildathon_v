@@ -17,7 +17,7 @@ When a high-value payout bounces, the merchant's finance operations team gets st
 4. Ops manually edits bank records, risking fraud or typos.
 5. They manually update the Zoho Books ERP ledger and re-initiate the payout.
 
-This manual process takes anywhere between 24 to 72 hours per transaction, creates vendor friction, stalls supply chains, and risks serious payment fraud.
+This manual process can introduce significant operational delays, vendor friction and risk of data-entry errors.
 
 ### Hence, my solution to make you guys even better: RX-AURA
 
@@ -29,7 +29,7 @@ This manual process takes anywhere between 24 to 72 hours per transaction, creat
 - **Penny-Drop & Fuzzy Match**: Runs simulated 1-rupee penny-drop verification and tokenized Levenshtein fuzzy name matching against legal master profiles.
 - **Bi-directional ERP Sync**: Automatically updates the vendor record and invoices in Zoho Books.
 - **Human-in-the-Loop Governance**: Stages a complete dynamic approval dossier for finance controllers before any money moves.
-- **Cryptographic Audit**: Seals every single state transition, API call, message, and approval into an immutable SHA-256 cryptographic ledger.
+- **Cryptographic Audit**: Seals every single state transition, API call, message, and approval into a tamper-evident SHA-256 cryptographic audit ledger.
 
 **Core Architecture Rule:** *AI reasons and proposes actions. A deterministic 10-state finite state machine executes. Human controllers authorize all money disbursements.*
 
